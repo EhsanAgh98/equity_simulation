@@ -1,6 +1,9 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import requests
+import re
 
 # =======================
 # 🎯 Streamlit Page Setup
@@ -11,10 +14,43 @@ st.markdown("<h1 style='text-align: center;'>📊 Trading Equity Curve Simulatio
 st.caption("Monte Carlo simulation for trading strategy analysis")
 
 # =======================
+# 🔧 Google Form Config  (مثل کد قبلی)
+# =======================
+GOOGLE_FORM_URL = None
+GOOGLE_ENTRY_EMAIL = None
+
+if "GOOGLE_FORM_URL" in st.secrets:
+    GOOGLE_FORM_URL = st.secrets["GOOGLE_FORM_URL"]
+if "GOOGLE_ENTRY_EMAIL" in st.secrets:
+    GOOGLE_ENTRY_EMAIL = st.secrets["GOOGLE_ENTRY_EMAIL"]
+
+if not GOOGLE_FORM_URL:
+    GOOGLE_FORM_URL = os.environ.get("GOOGLE_FORM_URL")
+if not GOOGLE_ENTRY_EMAIL:
+    GOOGLE_ENTRY_EMAIL = os.environ.get("GOOGLE_ENTRY_EMAIL")
+
+def submit_email_to_google_form(email):
+    if not GOOGLE_FORM_URL or not GOOGLE_ENTRY_EMAIL:
+        return False, "Google Form config missing."
+
+    payload = {GOOGLE_ENTRY_EMAIL: email}
+
+    try:
+        resp = requests.post(GOOGLE_FORM_URL, data=payload, timeout=10)
+        if resp.status_code in (200, 302):
+            return True, None
+        return False, f"Status {resp.status_code}"
+    except Exception as e:
+        return False, str(e)
+
+# =======================
 # 🔧 User Inputs
 # =======================
 with st.container():
     st.subheader("Simulation Parameters")
+
+    # ✅ فیلد ایمیل (مثل قبلی)
+    email = st.text_input("📩 Enter your email:")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -31,6 +67,25 @@ run_simulation = st.button("🚀 Run Simulation")
 # 📈 Simulation Logic
 # =======================
 if run_simulation:
+
+    # ❌ جلوگیری از اجرای شبیه‌سازی بدون ایمیل (مثل کد قبلی)
+    email_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    if not email or not re.match(email_pattern, email):
+        st.error("لطفاً یک ایمیل معتبر وارد کنید.")
+        st.stop()
+
+    # ✅ ارسال ایمیل به Google Form  (مثل کد قبلی)
+    ok, err = submit_email_to_google_form(email)
+    if not ok:
+        st.error(f"ثبت ایمیل انجام نشد: {err}")
+        st.stop()
+
+    st.success("ایمیل شما با موفقیت ثبت شد. شبیه‌سازی آغاز می‌شود...")
+
+    # --------------------------
+    # ادامهٔ کد شما — بدون هیچ تغییری
+    # --------------------------
+
     n_simulations = 1000
     results = []
     drawdowns = []
@@ -75,9 +130,6 @@ if run_simulation:
     results = np.array(results)
     end_balances = results[:, -1]
 
-    # =======================
-    # 📊 Calculations
-    # =======================
     best_result = np.max(end_balances)
     worst_result = np.min(end_balances)
     median_result = np.median(end_balances)
@@ -95,9 +147,6 @@ if run_simulation:
     avg_max_win = int(np.mean(consecutive_wins_list))
     avg_max_loss = int(np.mean(consecutive_losses_list))
 
-    # =======================
-    # 🧾 Results Display
-    # =======================
     st.subheader("Results")
 
     col1, col2, col3 = st.columns(3)
@@ -117,9 +166,6 @@ if run_simulation:
         st.metric("Max Consecutive Wins", f"{avg_max_win}")
         st.metric("Max Consecutive Losses", f"{avg_max_loss}")
 
-    # =======================
-    # 📉 Graph Display
-    # =======================
     st.subheader("Trading Equity Graph Result")
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -138,24 +184,11 @@ if run_simulation:
 
     st.pyplot(fig)
 
-
-
-
-    # =======================
-    # 🌐 Clickable Image
-    # =======================
-    image_url = "https://i.postimg.cc/dVmcGc0j/ytchannel.jpg"
-    link_url = "https://www.youtube.com/@zareii.Abbass/videos"
-
     st.markdown(
-        f"""
-        <a href="{link_url}" target="_blank">
-            <img src="{image_url}" width="400" style="display:block; margin:auto;">
+        """
+        <a href="https://www.youtube.com/@zareii.Abbass/videos" target="_blank">
+            <img src="https://i.postimg.cc/dVmcGc0j/ytchannel.jpg" width="400" style="display:block; margin:auto;">
         </a>
         """,
         unsafe_allow_html=True
     )
-
-
-
-
